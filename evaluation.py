@@ -1,6 +1,7 @@
 import torch
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
@@ -102,6 +103,12 @@ def main():
         NUM_WORKERS,
         PIN_MEMORY,
     )
+
+    img, label = next(iter(val_loader))
+    image = img[0].squeeze()
+    print(image)
+    plt.imshow(image.permute(1,2,0), cmap="gray")
+    plt.show()
 
     if LOAD_MODEL:
         load_checkpoint(torch.load("models/my_checkpoint"+MODEL_ARCH+".pth.tar"), model)

@@ -10,6 +10,7 @@ class CarvanaDataset(Dataset):
         self.transform = transform
         self.images = os.listdir(image_dir)
 
+
     def __len__(self):
         return len(self.images)
 

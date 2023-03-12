@@ -1,6 +1,7 @@
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 from skimage.filters import threshold_otsu
+from sklearn.metrics import f1_score
 import numpy as np
 import torch
 import statistics
@@ -27,7 +28,13 @@ def segment(img):
 
     # sure background area
     sure_bg = cv2.dilate(closing, kernel, iterations=5)
-    return sure_bg
+
+    # Finding sure foreground area
+    dist_transform = cv2.distanceTransform(sure_bg, cv2.DIST_L2, 3)
+
+    # Threshold
+    ret, sure_fg = cv2.threshold(dist_transform, 0.1 * dist_transform.max(), 255, 0)
+    return sure_fg
 
 def watershed_segmentation(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -138,6 +145,10 @@ def check_acc(gt, mask):
     num_correct += (gt == mask).sum()
     return num_correct
 
+def dice(pred, true, k = 1):
+    intersection = np.sum(pred[true==k]) * 2.0
+    dice = intersection / (np.sum(pred) + np.sum(true))
+    return dice
 def main():
     i=0
     accTL=[]
@@ -145,6 +156,7 @@ def main():
     num_pixelsE = IMAGE_HEIGHT * IMAGE_WIDTH
     num_correct = 0
     num_pixels = 0
+    dice_scoreL=[]
 
     for file_name in os.listdir(TEST_IMG_DIR):
         i+=1
@@ -158,12 +170,17 @@ def main():
         gt = cv2.resize(gt, dim, interpolation=cv2.INTER_AREA)
 
 
-        background_mask = kmeans_segmentation(img)
+        background_mask = segment(img)
 
         num_correct += np.sum(gt == background_mask)
         num_pixels += IMAGE_HEIGHT*IMAGE_WIDTH
         num_correctE = np.sum(gt == background_mask)
 
+        #dice_score = (2 * np.sum(gt * background_mask)) / (np.sum(gt + background_mask) + 1e-8)
+        #dice_score = dice(background_mask, gt, k=1)
+        #dice_score = np.sum(background_mask[gt == 1]) * 2.0 / (np.sum(background_mask) + np.sum(gt))
+        #f1 = f1_score(gt.view(-1).numpy(), background_mask.view(-1).numpy())
+        #dice_scoreL.append(dice_score)
         """
         fig, axs = plt.subplots(1, 3, figsize=(10, 5))
         # Plot each image in a separate subplot
@@ -189,16 +206,38 @@ def main():
         print(
             f"Got acc {accE:.2f} for image with {num_correctE}/{num_pixelsE} correct"
         )
+        #print(f"Dice score: {dice_score}")
+        if accE>100:
+            fig, axs = plt.subplots(1, 3, figsize=(10, 5))
+            # Plot each image in a separate subplot
+            axs[0].imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            axs[1].imshow(background_mask, cmap="gray")
+            axs[2].imshow(gt, cmap="gray")
+
+            # Set the titles for each subplot
+            axs[0].set_title('Image')
+            axs[1].set_title('Mask')
+            axs[2].set_title('Ground truth')
+
+            plt.show()
+
     meanAcc=statistics.mean(accEL)
     print(meanAcc)
+    meanDSc = statistics.mean(dice_scoreL)
+    print(meanDSc)
     plt.plot(accTL, label='Total accuracy')
-    plt.plot(accEL, label="Accuracy for each image")
-
-    plt.xlabel('X axis')
-    plt.ylabel('Y axis')
-    plt.title('Plot of accuracy')
+    plt.xlabel('Image')
+    plt.ylabel('Accuracy %')
+    plt.title('Plot of total accuracy')
     plt.legend()
     plt.show()
-
+    """
+    plt.plot(dice_scoreL, label='Dice score')
+    plt.xlabel('Image')
+    plt.ylabel('Accuracy %')
+    plt.title('Plot of dice score')
+    plt.legend()
+    plt.show()
+    """
 if __name__ == "__main__":
     main()

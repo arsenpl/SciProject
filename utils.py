@@ -89,20 +89,22 @@ def check_accuracy(loader, model, device="cuda"):
             dice_score += (2 * (preds * y).sum()) / (
                 (preds + y).sum() + 1e-8
             )
-
+            """
             preds = preds.view(-1).cpu().numpy()
             y = y.view(-1).cpu().numpy()
-
+            
             # Calculate the F1 score
             f1 = f1_score(y, preds)
             f1_scoreS += f1
-
+            """
+    acc=num_correct/num_pixels*100
     print(
-        f"Got {num_correct}/{num_pixels} with acc {num_correct/num_pixels*100:.2f}"
+        f"Got {num_correct}/{num_pixels} with acc {acc:.2f}"
     )
     print(f"Dice score: {dice_score/len(loader)}")
-    print(f"F1 score: {f1_scoreS / len(loader)}")
+    #print(f"F1 score: {f1_scoreS / len(loader)}")
     model.train()
+    return acc
 
 def save_predictions_as_imgs(
     loader, model, folder="saved_images/", device="cuda"

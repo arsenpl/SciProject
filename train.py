@@ -1,5 +1,6 @@
 import torch
 import albumentations as A
+import matplotlib.pyplot as plt
 from albumentations.pytorch import ToTensorV2
 from tqdm import tqdm
 import torch.nn as nn
@@ -36,7 +37,7 @@ VAL_MASK_DIR = "data/val_masks/"
 TEST_IMG_DIR = "data/test_images/"
 TEST_MASK_DIR = "data/test_masks/"
 #Model architectures: UNET, FCN, SEGNET
-MODEL_ARCH="UNET"
+MODEL_ARCH="SEGNET"
 
 def train_fn(loader, model, optimizer, loss_fn, scaler):
     loop = tqdm(loader)
@@ -58,9 +59,10 @@ def train_fn(loader, model, optimizer, loss_fn, scaler):
 
         # update tqdm loop
         loop.set_postfix(loss=loss.item())
-
+    return loss
 
 def main():
+    print("Training model: "+MODEL_ARCH)
     train_transform = A.Compose(
         [
             A.Resize(height=IMAGE_HEIGHT, width=IMAGE_WIDTH),
@@ -133,13 +135,15 @@ def main():
     if LOAD_MODEL:
         load_checkpoint(torch.load("models/my_checkpoint"+MODEL_ARCH+".pth.tar"), model)
 
-
+    print("Introductory evaluation of the model \n")
     check_accuracy(val_loader, model, device=DEVICE)
+    print("\n")
     scaler = torch.cuda.amp.GradScaler()
-
+    lossL=[]
+    accL=[]
     for epoch in range(NUM_EPOCHS):
-        train_fn(train_loader, model, optimizer, loss_fn, scaler)
-
+        loss=train_fn(train_loader, model, optimizer, loss_fn, scaler)
+        lossL.append(loss.item())
         # save model
         checkpoint = {
             "state_dict": model.state_dict(),
@@ -148,13 +152,27 @@ def main():
         save_checkpoint(checkpoint, "models/my_checkpoint"+MODEL_ARCH+".pth.tar")
 
         # check accuracy
-        check_accuracy(val_loader, model, device=DEVICE)
-
+        acc=check_accuracy(val_loader, model, device=DEVICE)
+        accL.append(acc.item())
         # print some examples to a folder
         save_predictions_as_imgs(
             val_loader, model, folder="saved_images/", device=DEVICE
         )
     torch.save(model.state_dict(), "models/model"+MODEL_ARCH+".pt")
+
+    plt.plot(lossL, label='Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Plot of loss in training process of '+ MODEL_ARCH)
+    plt.legend()
+    plt.show()
+
+    plt.plot(accL, label="Accuracy")
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy %')
+    plt.title('Plot of accuracy in training process of '+ MODEL_ARCH)
+    plt.legend()
+    plt.show()
 
 if __name__ == "__main__":
     main()

@@ -28,7 +28,7 @@ IMAGE_WIDTH = 240   # 1918 originally
 PIN_MEMORY = True
 LOAD_MODEL = False
 #Model architectures: UNET, FCN, SEGNET
-MODEL_ARCH="UNET"
+MODEL_ARCH="SEGNET"
 
 TRAIN_IMG_DIR = "data/train_images/"
 TRAIN_MASK_DIR = "data/train_masks/"
@@ -103,13 +103,13 @@ def main():
         NUM_WORKERS,
         PIN_MEMORY,
     )
-
+    """
     img, label = next(iter(val_loader))
     image = img[0].squeeze()
     print(image)
     plt.imshow(image.permute(1,2,0), cmap="gray")
     plt.show()
-
+    """
     if LOAD_MODEL:
         load_checkpoint(torch.load("models/my_checkpoint"+MODEL_ARCH+".pth.tar"), model)
     load_checkpoint(torch.load("models/my_checkpoint"+MODEL_ARCH+".pth.tar"), model)

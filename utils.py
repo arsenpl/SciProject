@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torchvision
 from sklearn.metrics import f1_score
@@ -103,8 +104,63 @@ def check_accuracy(loader, model, device="cuda"):
     )
     print(f"Dice score: {dice_score/len(loader)}")
     #print(f"F1 score: {f1_scoreS / len(loader)}")
+
     model.train()
     return acc
+
+
+def check_accuracy2(loader, model, device="cuda"):
+    num_correct = 0
+    num_pixels = 0
+    dice_scoreL = []
+    dice_scoreS=0
+    accL = []
+    f1_scoreS = 0
+    model.eval()
+    recallL=[]
+
+    with torch.no_grad():
+        for x, y in loader:
+            x = x.to(device)
+            y = y.to(device).unsqueeze(1)
+            # print(x.shape," ",y.shape)
+            preds = torch.sigmoid(model(x))
+            preds = (preds > 0.5).float()
+            num_correct += (preds == y).sum()
+            num_pixels += torch.numel(preds)
+            dice_score = (2 * (preds * y).sum()) / (
+                    (preds + y).sum() + 1e-8
+            )
+            dice_scoreS+=dice_score
+            dice_scoreL.append(dice_score.item())
+            acc = num_correct / num_pixels * 100
+            #print(acc, dice_score)
+            accL.append(acc.item())
+
+            TP = ((preds == 1) & (y == 1)).sum().item()
+            FN = ((preds == 0) & (y == 1)).sum().item()
+            FP = ((preds == 1) & (y == 0)).sum().item()
+
+            recall = TP / (TP + FN)
+            recallL.append(recall)
+            """
+            preds = preds.view(-1).cpu().numpy()
+            y = y.view(-1).cpu().numpy()
+
+            # Calculate the F1 score
+            f1 = f1_score(y, preds)
+            f1_scoreS += f1
+            """
+    print(f"Recall: {np.mean(recall):.2f}")
+    print(
+        f"Got {num_correct}/{num_pixels} with acc {np.mean(accL):.4f}"
+    )
+    print(f"Dice score: {dice_scoreS/len(loader)}")
+    # print(f"F1 score: {f1_scoreS / len(loader)}")
+
+
+    #model.train()
+    return accL, dice_scoreL
 
 def save_predictions_as_imgs(
     loader, model, folder="saved_images/", device="cuda"

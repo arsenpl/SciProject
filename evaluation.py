@@ -8,11 +8,13 @@ import torch.optim as optim
 from modelUNET import UNET
 from modelFCN import FCN8s
 from modelSegNet import SegNet
+import matplotlib.pyplot as plt
 from utils import (
     load_checkpoint,
     save_checkpoint,
     get_loaders,
     check_accuracy,
+    check_accuracy2,
     save_predictions_as_imgs,
 )
 
@@ -20,7 +22,7 @@ from utils import (
 LEARNING_RATE = 1e-4
 #LEARNING_RATE = 0.005
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-BATCH_SIZE = 16
+BATCH_SIZE = 1
 NUM_EPOCHS = 3
 NUM_WORKERS = 2
 IMAGE_HEIGHT = 160  # 1280 originally
@@ -28,7 +30,7 @@ IMAGE_WIDTH = 240   # 1918 originally
 PIN_MEMORY = True
 LOAD_MODEL = False
 #Model architectures: UNET, FCN, SEGNET
-MODEL_ARCH="SEGNET"
+MODEL_ARCH="UNET"
 
 TRAIN_IMG_DIR = "data/train_images/"
 TRAIN_MASK_DIR = "data/train_masks/"
@@ -112,9 +114,14 @@ def main():
     """
     if LOAD_MODEL:
         load_checkpoint(torch.load("models/my_checkpoint"+MODEL_ARCH+".pth.tar"), model)
-    load_checkpoint(torch.load("models/my_checkpoint"+MODEL_ARCH+".pth.tar"), model)
-    check_accuracy(val_loader, model, device=DEVICE)
-
+    #load_checkpoint(torch.load("models/my_checkpoint"+MODEL_ARCH+".pth.tar"), model)
+    accL, dice_scoreL=check_accuracy2(test_loader, model, device=DEVICE)
+    plt.plot(dice_scoreL, label='Accuracy')
+    plt.xlabel('Images')
+    plt.ylabel('Acccuracy %')
+    plt.title('Plot of accuracy for every image with model ' + MODEL_ARCH)
+    plt.legend()
+    plt.show()
 
 if __name__ == "__main__":
     main()

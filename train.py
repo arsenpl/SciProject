@@ -3,6 +3,7 @@ import albumentations as A
 import matplotlib.pyplot as plt
 from albumentations.pytorch import ToTensorV2
 from tqdm import tqdm
+import time
 import torch.nn as nn
 import torch.optim as optim
 from modelUNET import UNET
@@ -22,7 +23,7 @@ LEARNING_RATE = 1e-4
 #Learning rate for SEGNET
 #LEARNING_RATE = 0.005
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-BATCH_SIZE = 16
+BATCH_SIZE = 8
 NUM_EPOCHS = 5
 NUM_WORKERS = 2
 IMAGE_HEIGHT = 160  # 1280 originally
@@ -37,7 +38,7 @@ VAL_MASK_DIR = "data/val_masks/"
 TEST_IMG_DIR = "data/test_images/"
 TEST_MASK_DIR = "data/test_masks/"
 #Model architectures: UNET, FCN, SEGNET
-MODEL_ARCH="SEGNET"
+MODEL_ARCH="UNET"
 
 def train_fn(loader, model, optimizer, loss_fn, scaler):
     loop = tqdm(loader)
@@ -141,6 +142,7 @@ def main():
     scaler = torch.cuda.amp.GradScaler()
     lossL=[]
     accL=[]
+    starttime=time.time()
     for epoch in range(NUM_EPOCHS):
         loss=train_fn(train_loader, model, optimizer, loss_fn, scaler)
         lossL.append(loss.item())
@@ -159,15 +161,17 @@ def main():
             val_loader, model, folder="saved_images/", device=DEVICE
         )
     torch.save(model.state_dict(), "models/model"+MODEL_ARCH+".pt")
-
-    plt.plot(lossL, label='Loss')
+    endtime=time.time()
+    traintime=endtime-starttime
+    print("Time of training: "+str(traintime))
+    plt.plot([1,2,3,4,5],lossL, label='Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.title('Plot of loss in training process of '+ MODEL_ARCH)
     plt.legend()
     plt.show()
 
-    plt.plot(accL, label="Accuracy")
+    plt.plot([1,2,3,4,5],accL, label="Accuracy")
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy %')
     plt.title('Plot of accuracy in training process of '+ MODEL_ARCH)

@@ -176,11 +176,15 @@ def main():
         num_pixels += IMAGE_HEIGHT*IMAGE_WIDTH
         num_correctE = np.sum(gt == background_mask)
 
-        #dice_score = (2 * np.sum(gt * background_mask)) / (np.sum(gt + background_mask) + 1e-8)
+        #print(np.unique(gt))
+        background_mask=background_mask/255
+        background_mask=background_mask.astype(int)
+        #print(np.unique(background_mask))
+        dice_score = (2 * np.sum(gt * background_mask)) / (np.sum(gt + background_mask) + 1e-8)
         #dice_score = dice(background_mask, gt, k=1)
         #dice_score = np.sum(background_mask[gt == 1]) * 2.0 / (np.sum(background_mask) + np.sum(gt))
         #f1 = f1_score(gt.view(-1).numpy(), background_mask.view(-1).numpy())
-        #dice_scoreL.append(dice_score)
+        dice_scoreL.append(dice_score)
         """
         fig, axs = plt.subplots(1, 3, figsize=(10, 5))
         # Plot each image in a separate subplot
@@ -206,7 +210,7 @@ def main():
         print(
             f"Got acc {accE:.2f} for image with {num_correctE}/{num_pixelsE} correct"
         )
-        #print(f"Dice score: {dice_score}")
+        print(f"Dice score: {dice_score}")
         if accE>100:
             fig, axs = plt.subplots(1, 3, figsize=(10, 5))
             # Plot each image in a separate subplot
@@ -231,13 +235,13 @@ def main():
     plt.title('Plot of total accuracy')
     plt.legend()
     plt.show()
-    """
+
     plt.plot(dice_scoreL, label='Dice score')
     plt.xlabel('Image')
-    plt.ylabel('Accuracy %')
+    plt.ylabel('Dice score')
     plt.title('Plot of dice score')
     plt.legend()
     plt.show()
-    """
+
 if __name__ == "__main__":
     main()

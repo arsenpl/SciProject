@@ -71,22 +71,27 @@ def get_loaders(
 
     return train_loader, val_loader, test_loader
 
-def check_accuracy(loader, model, device="cuda"):
+def check_accuracy(loader, loss_fn,  model, device="cuda"):
     num_correct = 0
     num_pixels = 0
     dice_score = 0
     f1_scoreS = 0
     model.eval()
-
+    lossL=[]
+    i=0
     with torch.no_grad():
         for x, y in loader:
             x = x.to(device)
             y = y.to(device).unsqueeze(1)
-            #print(x.shape," ",y.shape)
+            i+=1
+
             preds = torch.sigmoid(model(x))
+            loss=loss_fn(preds,y)
+            lossL.append(loss.item())
             preds = (preds > 0.5).float()
             num_correct += (preds == y).sum()
             num_pixels += torch.numel(preds)
+            #print(str(num_pixels)+" "+str(num_correct))
             dice_score += (2 * (preds * y).sum()) / (
                 (preds + y).sum() + 1e-8
             )
@@ -104,9 +109,9 @@ def check_accuracy(loader, model, device="cuda"):
     )
     print(f"Dice score: {dice_score/len(loader)}")
     #print(f"F1 score: {f1_scoreS / len(loader)}")
-
+    print(i)
     model.train()
-    return acc
+    return acc, lossL
 
 
 def check_accuracy2(loader, model, device="cuda"):
@@ -126,8 +131,8 @@ def check_accuracy2(loader, model, device="cuda"):
             # print(x.shape," ",y.shape)
             preds = torch.sigmoid(model(x))
             preds = (preds > 0.5).float()
-            num_correct += (preds == y).sum()
-            num_pixels += torch.numel(preds)
+            num_correct = (preds == y).sum()
+            num_pixels = torch.numel(preds)
             dice_score = (2 * (preds * y).sum()) / (
                     (preds + y).sum() + 1e-8
             )

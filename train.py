@@ -24,7 +24,7 @@ LEARNING_RATE = 1e-4
 #LEARNING_RATE = 0.005
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 BATCH_SIZE = 8
-NUM_EPOCHS = 5
+NUM_EPOCHS = 10
 NUM_WORKERS = 2
 IMAGE_HEIGHT = 160  # 1280 originally
 IMAGE_WIDTH = 240   # 1918 originally
@@ -38,11 +38,14 @@ VAL_MASK_DIR = "data/val_masks/"
 TEST_IMG_DIR = "data/test_images/"
 TEST_MASK_DIR = "data/test_masks/"
 #Model architectures: UNET, FCN, SEGNET
-MODEL_ARCH="UNET"
+MODEL_ARCH="SEGNET"
 
-def train_fn(loader, model, optimizer, loss_fn, scaler):
-    loop = tqdm(loader)
-
+def train_fn(train_loader, val_loader, model, optimizer, loss_fn, scaler):
+    loop = tqdm(train_loader)
+    num_correct = 0
+    num_pixels = 0
+    lossT=[]
+    accT=[]
     for batch_idx, (data, targets) in enumerate(loop):
         data = data.to(device=DEVICE)
         targets = targets.float().unsqueeze(1).to(device=DEVICE)
@@ -51,6 +54,14 @@ def train_fn(loader, model, optimizer, loss_fn, scaler):
         with torch.cuda.amp.autocast():
             predictions = model(data)
             loss = loss_fn(predictions, targets)
+            lossT.append(loss.item())
+            predictions = torch.sigmoid(predictions)
+            num_correct = (predictions.round() == targets).sum()
+
+            num_pixels = torch.numel(predictions)
+
+            acc = num_correct / num_pixels * 100
+            accT.append(acc.item())
 
         # backward
         optimizer.zero_grad()
@@ -59,8 +70,33 @@ def train_fn(loader, model, optimizer, loss_fn, scaler):
         scaler.update()
 
         # update tqdm loop
-        loop.set_postfix(loss=loss.item())
-    return loss
+        loop.set_postfix(loss=loss.item(), accuracy=acc.item())
+    loop = tqdm(val_loader)
+    model.eval()
+    num_correct = 0
+    num_pixels = 0
+    lossV = []
+    accV = []
+    for batch_idx, (data, targets) in enumerate(loop):
+        data = data.to(device=DEVICE)
+        targets = targets.float().unsqueeze(1).to(device=DEVICE)
+
+        # forward
+        with torch.cuda.amp.autocast():
+            predictions = model(data)
+            loss = loss_fn(predictions, targets)
+            lossV.append(loss.item())
+            predictions = torch.sigmoid(predictions)
+            num_correct = (predictions.round() == targets).sum()
+
+            num_pixels = torch.numel(predictions)
+
+            acc = num_correct / num_pixels * 100
+            accV.append(acc.item())
+
+            # update tqdm loop
+        loop.set_postfix(loss=loss.item(), accuracy=acc.item())
+    return lossT, accT, lossV, accV
 
 def main():
     print("Training model: "+MODEL_ARCH)
@@ -137,15 +173,21 @@ def main():
         load_checkpoint(torch.load("models/my_checkpoint"+MODEL_ARCH+".pth.tar"), model)
 
     print("Introductory evaluation of the model \n")
-    check_accuracy(val_loader, model, device=DEVICE)
+    check_accuracy(val_loader,loss_fn, model, device=DEVICE)
     print("\n")
     scaler = torch.cuda.amp.GradScaler()
-    lossL=[]
-    accL=[]
+    lossT=[]
+    lossV=[]
+    accT=[]
+    accV=[]
     starttime=time.time()
     for epoch in range(NUM_EPOCHS):
-        loss=train_fn(train_loader, model, optimizer, loss_fn, scaler)
-        lossL.append(loss.item())
+        print("Epoch: ", epoch+1)
+        loss_train,acc_train, loss_val, acc_val=train_fn(train_loader,val_loader, model, optimizer, loss_fn, scaler)
+        lossT+=loss_train
+        accT+=acc_train
+        lossV+=loss_val
+        accV+=acc_val
         # save model
         checkpoint = {
             "state_dict": model.state_dict(),
@@ -154,8 +196,9 @@ def main():
         save_checkpoint(checkpoint, "models/my_checkpoint"+MODEL_ARCH+".pth.tar")
 
         # check accuracy
-        acc=check_accuracy(val_loader, model, device=DEVICE)
-        accL.append(acc.item())
+        #acc, loss_val=check_accuracy(val_loader, loss_fn, model, device=DEVICE)
+        #lossV+=loss_val
+        #accL.append(acc.item())
         # print some examples to a folder
         save_predictions_as_imgs(
             val_loader, model, folder="saved_images/", device=DEVICE
@@ -163,16 +206,24 @@ def main():
     torch.save(model.state_dict(), "models/model"+MODEL_ARCH+".pt")
     endtime=time.time()
     traintime=endtime-starttime
-    print("Time of training: "+str(traintime))
-    plt.plot([1,2,3,4,5],lossL, label='Loss')
-    plt.xlabel('Epoch')
+    with open(MODEL_ARCH+"loss.txt", "w") as f:
+        for s in lossT:
+            f.write(str(s) + "\n")
+    print("Time of training: "+str(traintime/60)+" minute")
+    plt.plot(lossT, label='Loss')
+    #plt.plot(lossV, label='Validation')
+    plt.xlabel('Batches')
     plt.ylabel('Loss')
     plt.title('Plot of loss in training process of '+ MODEL_ARCH)
     plt.legend()
     plt.show()
 
-    plt.plot([1,2,3,4,5],accL, label="Accuracy")
-    plt.xlabel('Epoch')
+    with open(MODEL_ARCH+"acc.txt", "w") as f:
+        for s in accT:
+            f.write(str(s) + "\n")
+    plt.plot(accT, label="Accuracy")
+    #plt.plot(accV, label="Validation")
+    plt.xlabel('Batches')
     plt.ylabel('Accuracy %')
     plt.title('Plot of accuracy in training process of '+ MODEL_ARCH)
     plt.legend()

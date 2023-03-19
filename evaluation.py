@@ -9,6 +9,7 @@ from modelUNET import UNET
 from modelFCN import FCN8s
 from modelSegNet import SegNet
 import matplotlib.pyplot as plt
+import csv
 from utils import (
     load_checkpoint,
     save_checkpoint,
@@ -30,7 +31,7 @@ IMAGE_WIDTH = 240   # 1918 originally
 PIN_MEMORY = True
 LOAD_MODEL = False
 #Model architectures: UNET, FCN, SEGNET
-MODEL_ARCH="UNET"
+MODEL_ARCHS=["UNET", "FCN", "SEGNET"]
 
 TRAIN_IMG_DIR = "data/train_images/"
 TRAIN_MASK_DIR = "data/train_masks/"
@@ -79,18 +80,6 @@ def main():
             ToTensorV2(),
         ],
     )
-    if MODEL_ARCH=="UNET":
-        model = UNET(in_channels=3, out_channels=1).to(DEVICE)
-    elif MODEL_ARCH=="FCN":
-        model = FCN8s(in_channels=3, out_channels=1).to(DEVICE)
-    elif MODEL_ARCH=="SEGNET":
-        model = SegNet(in_channels=3, out_channels=1, BN_momentum=0.9).to(DEVICE)
-
-    model.load_state_dict(torch.load("models/model"+MODEL_ARCH+".pt"))
-    model.eval()
-    #model = FCN8s(in_channels=3, out_channels=1).to(DEVICE)
-    #model = SegNet(in_channels=3, out_channels=1, BN_momentum=0.9).to(DEVICE)
-
     train_loader, val_loader, test_loader = get_loaders(
         TRAIN_IMG_DIR,
         TRAIN_MASK_DIR,
@@ -105,23 +94,43 @@ def main():
         NUM_WORKERS,
         PIN_MEMORY,
     )
-    """
-    img, label = next(iter(val_loader))
-    image = img[0].squeeze()
-    print(image)
-    plt.imshow(image.permute(1,2,0), cmap="gray")
-    plt.show()
-    """
-    if LOAD_MODEL:
-        load_checkpoint(torch.load("models/my_checkpoint"+MODEL_ARCH+".pth.tar"), model)
-    #load_checkpoint(torch.load("models/my_checkpoint"+MODEL_ARCH+".pth.tar"), model)
-    accL, dice_scoreL=check_accuracy2(test_loader, model, device=DEVICE)
-    plt.plot(dice_scoreL, label='Accuracy')
-    plt.xlabel('Images')
-    plt.ylabel('Acccuracy %')
-    plt.title('Plot of accuracy for every image with model ' + MODEL_ARCH)
-    plt.legend()
-    plt.show()
+    for MODEL_ARCH in MODEL_ARCHS:
+        print(MODEL_ARCH)
+        if MODEL_ARCH=="UNET":
+            model = UNET(in_channels=3, out_channels=1).to(DEVICE)
+        elif MODEL_ARCH=="FCN":
+            model = FCN8s(in_channels=3, out_channels=1).to(DEVICE)
+        elif MODEL_ARCH=="SEGNET":
+            model = SegNet(in_channels=3, out_channels=1, BN_momentum=0.9).to(DEVICE)
+
+        model.load_state_dict(torch.load("models/model"+MODEL_ARCH+".pt"))
+        model.eval()
+
+
+        filename = 'measurements/'+MODEL_ARCH+'data.csv'
+        if LOAD_MODEL:
+            load_checkpoint(torch.load("models/my_checkpoint"+MODEL_ARCH+".pth.tar"), model)
+        data=[
+            ["Accuracy", "Dice score", "Recall", "Precision"]
+        ]
+        for i in range(20):
+            print(i)
+            accuracy, dice_score, recall, precision, accL, dice_scoreL=check_accuracy2(test_loader, model, device=DEVICE)
+            data.append([accuracy, dice_score, recall,precision])
+        print(data)
+
+        with open(filename, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            for row in data:
+                writer.writerow(row)
+        """
+        plt.plot(dice_scoreL, label='Accuracy')
+        plt.xlabel('Images')
+        plt.ylabel('Acccuracy %')
+        plt.title('Plot of accuracy for every image with model ' + MODEL_ARCH)
+        plt.legend()
+        plt.show()
+        """
 
 if __name__ == "__main__":
     main()

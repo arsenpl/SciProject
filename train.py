@@ -218,7 +218,7 @@ def main():
     plt.legend()
     plt.show()
 
-    with open(MODEL_ARCH+"acc.txt", "w") as f:
+    with open("measurements/"+MODEL_ARCH+"acc.txt", "w") as f:
         for s in accT:
             f.write(str(s) + "\n")
     plt.plot(accT, label="Accuracy")

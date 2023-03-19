@@ -123,6 +123,7 @@ def check_accuracy2(loader, model, device="cuda"):
     f1_scoreS = 0
     model.eval()
     recallL=[]
+    precisionL=[]
 
     with torch.no_grad():
         for x, y in loader:
@@ -131,8 +132,8 @@ def check_accuracy2(loader, model, device="cuda"):
             # print(x.shape," ",y.shape)
             preds = torch.sigmoid(model(x))
             preds = (preds > 0.5).float()
-            num_correct = (preds == y).sum()
-            num_pixels = torch.numel(preds)
+            num_correct += (preds == y).sum()
+            num_pixels += torch.numel(preds)
             dice_score = (2 * (preds * y).sum()) / (
                     (preds + y).sum() + 1e-8
             )
@@ -148,6 +149,8 @@ def check_accuracy2(loader, model, device="cuda"):
 
             recall = TP / (TP + FN)
             recallL.append(recall)
+            precision = TP / (TP+FP)
+            precisionL.append(precision)
             """
             preds = preds.view(-1).cpu().numpy()
             y = y.view(-1).cpu().numpy()
@@ -156,16 +159,17 @@ def check_accuracy2(loader, model, device="cuda"):
             f1 = f1_score(y, preds)
             f1_scoreS += f1
             """
-    print(f"Recall: {np.mean(recall):.2f}")
-    print(
-        f"Got {num_correct}/{num_pixels} with acc {np.mean(accL):.4f}"
-    )
-    print(f"Dice score: {dice_scoreS/len(loader)}")
+    mean_recall=np.mean(recall)*100
+    #print(f"Recall: {mean_recall:.6f}")
+    mean_precision=np.mean(precisionL)*100
+    #print(f"Precision: {mean_precision:.6f}")
+    mean_accuracy=np.mean(accL)
+    #print(f"Got {num_correct}/{num_pixels} with acc {mean_accuracy:.4f}")
+    mean_dice_score=(dice_scoreS/len(loader))*100
+    #print(f"Dice score: {mean_dice_score}")
     # print(f"F1 score: {f1_scoreS / len(loader)}")
-
-
     #model.train()
-    return accL, dice_scoreL
+    return mean_accuracy, mean_dice_score.item(), mean_recall, mean_precision, accL, dice_scoreL
 
 def save_predictions_as_imgs(
     loader, model, folder="saved_images/", device="cuda"

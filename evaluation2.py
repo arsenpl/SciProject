@@ -7,11 +7,11 @@ import torch
 import statistics
 import os
 import cv2
-
+scale=3 # 1 or 2
 TEST_IMG_DIR = "data/test_images/"
 TEST_MASK_DIR = "data/test_masks/"
-IMAGE_HEIGHT = 160  # 1280 originally
-IMAGE_WIDTH = 240   # 1918 originally
+IMAGE_HEIGHT = 160*scale  # 1280 originally
+IMAGE_WIDTH = 240*scale  # 1918 originally
 n_clusters=2
 
 def segment(img):
@@ -19,51 +19,100 @@ def segment(img):
     rgb_img = cv2.merge([r, g, b])
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
     ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    # noise removal
     kernel = np.ones((2, 2), np.uint8)
-    # opening = cv2.morphologyEx(thresh,cv2.MORPH_OPEN,kernel, iterations = 2)
+
     closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
 
-    # sure background area
     sure_bg = cv2.dilate(closing, kernel, iterations=5)
 
-    # Finding sure foreground area
     dist_transform = cv2.distanceTransform(sure_bg, cv2.DIST_L2, 3)
 
-    # Threshold
     ret, sure_fg = cv2.threshold(dist_transform, 0.1 * dist_transform.max(), 255, 0)
+
     return sure_fg
 
-def watershed_segmentation(img):
+def rgb_threshold(img):
+    b, g, r = cv2.split(img)
+
+    rgb_img = cv2.merge([r, g, b])
+
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    '''
+    fig, axs = plt.subplots(1, 4, figsize=(10, 5))
+    # Plot each image in a separate subplot
+    axs[0].imshow(b, cmap="gray")
+    axs[1].imshow(g, cmap="gray")
+    axs[2].imshow(r, cmap="gray")
+    axs[3].imshow(gray, cmap="gray")
+
+    # Set the titles for each subplot
+    axs[0].set_title('Blue')
+    axs[1].set_title('Green')
+    axs[2].set_title('Red')
+    axs[3].set_title('Gray')
+
+    plt.show()
+    '''
+    retr, threshr = cv2.threshold(r, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    retg, threshg = cv2.threshold(g, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    retb, threshb = cv2.threshold(b, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
     ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    # noise removal
-    kernel = np.ones((3, 3), np.uint8)
-    opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
-    # sure background area
-    sure_bg = cv2.dilate(opening, kernel, iterations=3)
-    # Finding sure foreground area
-    dist_transform = cv2.distanceTransform(opening, cv2.DIST_L2, 5)
-    ret, sure_fg = cv2.threshold(dist_transform, 0.7 * dist_transform.max(), 255, 0)
-    # Finding unknown region
-    sure_fg = np.uint8(sure_fg)
-    unknown = cv2.subtract(sure_bg, sure_fg)
+    kernel = np.ones((2, 2), np.uint8)
 
-    # Marker labelling
-    ret, markers = cv2.connectedComponents(sure_fg)
-    # Add one to all labels so that sure background is not 0, but 1
-    markers = markers + 1
-    # Now, mark the region of unknown with zero
-    markers[unknown == 255] = 0
+    closingr = cv2.morphologyEx(threshr, cv2.MORPH_CLOSE, kernel, iterations=2)
+    closingg = cv2.morphologyEx(threshg, cv2.MORPH_CLOSE, kernel, iterations=2)
+    closingb = cv2.morphologyEx(threshb, cv2.MORPH_CLOSE, kernel, iterations=2)
 
-    markers = cv2.watershed(img, markers)
-    img[markers == -1] = [255, 0, 0]
+    closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
 
+    sure_bgr = cv2.dilate(closingr, kernel, iterations=5)
+    sure_bgg = cv2.dilate(closingg, kernel, iterations=5)
+    sure_bgb = cv2.dilate(closingb, kernel, iterations=5)
 
-    return markers
+    sure_bg = cv2.dilate(closing, kernel, iterations=5)
+
+    dist_transformr = cv2.distanceTransform(sure_bgr, cv2.DIST_L2, 3)
+    dist_transformg = cv2.distanceTransform(sure_bgg, cv2.DIST_L2, 3)
+    dist_transformb = cv2.distanceTransform(sure_bgb, cv2.DIST_L2, 3)
+
+    dist_transform = cv2.distanceTransform(sure_bg, cv2.DIST_L2, 3)
+
+    ret, sure_fgr = cv2.threshold(dist_transformr, 0.1 * dist_transform.max(), 255, 0)
+    ret, sure_fgg = cv2.threshold(dist_transformg, 0.1 * dist_transform.max(), 255, 0)
+    ret, sure_fgb = cv2.threshold(dist_transformb, 0.1 * dist_transform.max(), 255, 0)
+
+    ret, sure_fg = cv2.threshold(dist_transform, 0.1 * dist_transform.max(), 255, 0)
+
+    fig, axs = plt.subplots(1, 5, figsize=(10, 5))
+    # Plot each image in a separate subplot
+    axs[0].imshow(sure_fgb, cmap="gray")
+    axs[1].imshow(sure_fgg, cmap="gray")
+    axs[2].imshow(sure_fgr, cmap="gray")
+    axs[3].imshow(sure_fg, cmap="gray")
+    axs[4].imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+
+    # Set the titles for each subplot
+    axs[0].set_title('Blue')
+    axs[1].set_title('Green')
+    axs[2].set_title('Red')
+    axs[3].set_title('Gray')
+    axs[4].set_title('Color')
+
+    plt.show()
+    sure_fgr = sure_fgr / 255
+    sure_fgr = sure_fgr.astype(int)
+    sure_fgg = sure_fgg / 255
+    sure_fgg = sure_fgg.astype(int)
+    sure_fgb = sure_fgb / 255
+    sure_fgb = sure_fgb.astype(int)
+    seg_img=sure_fgr|sure_fgg|sure_fgb
+    return seg_img
 
 def kmeans_segmentation2(img):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -151,17 +200,22 @@ def dice(pred, true, k = 1):
     return dice
 def main():
     i=0
-    accTL=[]
-    accEL=[]
-    num_pixelsE = IMAGE_HEIGHT * IMAGE_WIDTH
+    TP=0
+    FP=0
+    FN=0
     num_correct = 0
     num_pixels = 0
-    dice_scoreL=[]
+    accTL=[]
+    accEL=[]
+    dice_scoreL = []
+    recallL = []
+    precisionL = []
+
+    num_pixelsE = IMAGE_HEIGHT * IMAGE_WIDTH
 
     for file_name in os.listdir(TEST_IMG_DIR):
         i+=1
-        #if i>25:
-        #    break
+        #if i>600:
         file_name=file_name.removesuffix(".jpg")
         img = cv2.imread(TEST_IMG_DIR+file_name+".jpg")
         gt = cv2.imread(TEST_MASK_DIR+file_name+".png", 0)
@@ -169,49 +223,37 @@ def main():
         img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
         gt = cv2.resize(gt, dim, interpolation=cv2.INTER_AREA)
 
-
-        background_mask = segment(img)
-
+        background_mask = kmeans_segmentation(img)
+        #plt.imshow(background_mask)
+        #plt.show()
+        #background_mask = background_mask / 255
+        #background_mask = background_mask.astype(int)
+        #plt.imshow(background_mask)
+        #plt.show()
+        print(np.unique(background_mask))
+        TP += ((background_mask == 1) & (gt == 1)).sum().item()
+        FN += ((background_mask == 0) & (gt == 1)).sum().item()
+        FP += ((background_mask == 1) & (gt == 0)).sum().item()
+        #print(TP,FP)
+        recall = TP / (TP + FN)
+        recallL.append(recall)
+        precision = TP / (TP + FP)
+        precisionL.append(precision)
         num_correct += np.sum(gt == background_mask)
         num_pixels += IMAGE_HEIGHT*IMAGE_WIDTH
-        num_correctE = np.sum(gt == background_mask)
+        #num_correctE = np.sum(gt == background_mask)
 
-        #print(np.unique(gt))
-        background_mask=background_mask/255
-        background_mask=background_mask.astype(int)
-        #print(np.unique(background_mask))
         dice_score = (2 * np.sum(gt * background_mask)) / (np.sum(gt + background_mask) + 1e-8)
-        #dice_score = dice(background_mask, gt, k=1)
-        #dice_score = np.sum(background_mask[gt == 1]) * 2.0 / (np.sum(background_mask) + np.sum(gt))
-        #f1 = f1_score(gt.view(-1).numpy(), background_mask.view(-1).numpy())
         dice_scoreL.append(dice_score)
-        """
-        fig, axs = plt.subplots(1, 3, figsize=(10, 5))
-        # Plot each image in a separate subplot
-        axs[0].imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        axs[1].imshow(background_mask, cmap="gray")
-        axs[2].imshow(gt, cmap="gray")
-
-        # Set the titles for each subplot
-        axs[0].set_title('Image')
-        axs[1].set_title('Mask')
-        axs[2].set_title('Ground truth')
-
-        plt.show()
-        """
         accT=num_correct / num_pixels * 100
         accTL.append(accT)
-        print("Image: ", i)
-        print(
-            f"Got total acc {accT:.2f} with {num_correct}/{num_pixels} correct"
-        )
-        accE=num_correctE / num_pixelsE * 100
-        accEL.append(accE)
-        print(
-            f"Got acc {accE:.2f} for image with {num_correctE}/{num_pixelsE} correct"
-        )
-        print(f"Dice score: {dice_score}")
-        if accE>100:
+        #print("Image: ", i)
+
+        #accE=num_correctE / num_pixelsE * 100
+        #accEL.append(accE)
+        #print(f"Got acc {accE:.2f} for image with {num_correctE}/{num_pixelsE} correct")
+        #print(f"Dice score: {dice_score}")
+        if accT<30:
             fig, axs = plt.subplots(1, 3, figsize=(10, 5))
             # Plot each image in a separate subplot
             axs[0].imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
@@ -225,10 +267,15 @@ def main():
 
             plt.show()
 
-    meanAcc=statistics.mean(accEL)
-    print(meanAcc)
-    meanDSc = statistics.mean(dice_scoreL)
-    print(meanDSc)
+    print(f"Got total acc {np.mean(accTL):.4f} with {num_correct}/{num_pixels} correct")
+    print(f"Dice score: {np.mean(dice_scoreL):.6f}")
+    print(f"Recall: {np.mean(recallL):.6f}")
+    print(f"Precision: {np.mean(precisionL):.6f}")
+
+    #meanAcc=statistics.mean(accEL)
+    #print(meanAcc)
+    #meanDSc = statistics.mean(dice_scoreL)
+    #print(meanDSc)
     plt.plot(accTL, label='Total accuracy')
     plt.xlabel('Image')
     plt.ylabel('Accuracy %')

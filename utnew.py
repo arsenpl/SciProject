@@ -1,2 +1,2 @@
-for i in range(1,200):
-    print(i*16)
+Model="UNETR"
+print(Model[:-1])

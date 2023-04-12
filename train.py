@@ -23,11 +23,12 @@ LEARNING_RATE = 1e-4
 #Learning rate for SEGNET
 #LEARNING_RATE = 0.005
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-BATCH_SIZE = 8
-NUM_EPOCHS = 10
+BATCH_SIZE = 2
+NUM_EPOCHS = 5
 NUM_WORKERS = 2
-IMAGE_HEIGHT = 160  # 1280 originally
-IMAGE_WIDTH = 240   # 1918 originally
+scale=2 #1 or 2
+IMAGE_HEIGHT = 160*scale  # 1280 originally
+IMAGE_WIDTH = 240*scale   # 1918 originally
 PIN_MEMORY = True
 LOAD_MODEL = False
 
@@ -38,7 +39,7 @@ VAL_MASK_DIR = "data/val_masks/"
 TEST_IMG_DIR = "data/test_images/"
 TEST_MASK_DIR = "data/test_masks/"
 #Model architectures: UNET, FCN, SEGNET
-MODEL_ARCH="SEGNET"
+MODEL_ARCH="UNETR"
 
 def train_fn(train_loader, val_loader, model, optimizer, loss_fn, scaler):
     loop = tqdm(train_loader)
@@ -139,17 +140,17 @@ def main():
         ],
     )
 
-    if MODEL_ARCH=="UNET":
+    if MODEL_ARCH.__contains__("UNET"):
         model = UNET(in_channels=3, out_channels=1).to(DEVICE)
         loss_fn = nn.BCEWithLogitsLoss()
         #loss_fn = nn.MSELoss()
         optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    elif MODEL_ARCH=="FCN":
+    elif MODEL_ARCH.__contains__("FCN"):
         model = FCN8s(in_channels=3, out_channels=1).to(DEVICE)
         loss_fn = nn.BCEWithLogitsLoss()
         #loss_fn = nn.MSELoss()
         optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    elif MODEL_ARCH=="SEGNET":
+    elif MODEL_ARCH.__contains__("SEGNET"):
         model = SegNet(in_channels=3, out_channels=1, BN_momentum=0.9).to(DEVICE)
         loss_fn = nn.BCEWithLogitsLoss()
         optimizer = optim.SGD(model.parameters(), lr=0.005, momentum=0.5)
@@ -209,12 +210,13 @@ def main():
     with open(MODEL_ARCH+"loss.txt", "w") as f:
         for s in lossT:
             f.write(str(s) + "\n")
+
     print("Time of training: "+str(traintime/60)+" minute")
     plt.plot(lossT, label='Loss')
     #plt.plot(lossV, label='Validation')
     plt.xlabel('Batches')
     plt.ylabel('Loss')
-    plt.title('Plot of loss in training process of '+ MODEL_ARCH)
+    plt.title('Plot of loss in training process of '+ MODEL_ARCH[:-1])
     plt.legend()
     plt.show()
 
@@ -225,7 +227,7 @@ def main():
     #plt.plot(accV, label="Validation")
     plt.xlabel('Batches')
     plt.ylabel('Accuracy %')
-    plt.title('Plot of accuracy in training process of '+ MODEL_ARCH)
+    plt.title('Plot of accuracy in training process of '+ MODEL_ARCH[:-1])
     plt.legend()
     plt.show()
 

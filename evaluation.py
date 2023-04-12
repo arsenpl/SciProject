@@ -23,15 +23,16 @@ from utils import (
 LEARNING_RATE = 1e-4
 #LEARNING_RATE = 0.005
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-BATCH_SIZE = 1
-NUM_EPOCHS = 3
+BATCH_SIZE = 16
+NUM_EPOCHS = 1
 NUM_WORKERS = 2
-IMAGE_HEIGHT = 160  # 1280 originally
-IMAGE_WIDTH = 240   # 1918 originally
+scale=1 #1 or 4
+IMAGE_HEIGHT = 160*scale  # 1280 originally
+IMAGE_WIDTH = 240*scale   # 1918 originally
 PIN_MEMORY = True
 LOAD_MODEL = False
 #Model architectures: UNET, FCN, SEGNET
-MODEL_ARCHS=["UNET", "FCN", "SEGNET"]
+MODEL_ARCHS=["UNET"]
 
 TRAIN_IMG_DIR = "data/train_images/"
 TRAIN_MASK_DIR = "data/train_masks/"
@@ -96,24 +97,26 @@ def main():
     )
     for MODEL_ARCH in MODEL_ARCHS:
         print(MODEL_ARCH)
-        if MODEL_ARCH=="UNET":
+        if MODEL_ARCH.__contains__("UNET"):
             model = UNET(in_channels=3, out_channels=1).to(DEVICE)
-        elif MODEL_ARCH=="FCN":
+        elif MODEL_ARCH.__contains__("FCN"):
             model = FCN8s(in_channels=3, out_channels=1).to(DEVICE)
-        elif MODEL_ARCH=="SEGNET":
+        elif MODEL_ARCH.__contains__("SEGNET"):
             model = SegNet(in_channels=3, out_channels=1, BN_momentum=0.9).to(DEVICE)
 
         model.load_state_dict(torch.load("models/model"+MODEL_ARCH+".pt"))
         model.eval()
-
-
-        filename = 'measurements/'+MODEL_ARCH+'data.csv'
+        save_predictions_as_imgs(
+            val_loader, model, folder="saved_images/", device=DEVICE
+        )
+        #filename = 'measurements/' + MODEL_ARCH + 'data.csv'
+        filename = MODEL_ARCH+'2data.csv'
         if LOAD_MODEL:
             load_checkpoint(torch.load("models/my_checkpoint"+MODEL_ARCH+".pth.tar"), model)
         data=[
             ["Accuracy", "Dice score", "Recall", "Precision"]
         ]
-        for i in range(20):
+        for i in range(1):
             print(i)
             accuracy, dice_score, recall, precision, accL, dice_scoreL=check_accuracy2(test_loader, model, device=DEVICE)
             data.append([accuracy, dice_score, recall,precision])

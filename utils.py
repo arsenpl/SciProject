@@ -120,10 +120,14 @@ def check_accuracy2(loader, model, device="cuda"):
     dice_scoreL = []
     dice_scoreS=0
     accL = []
-    f1_scoreS = 0
     model.eval()
     recallL=[]
     precisionL=[]
+    precisionS=0
+    TP=0
+    FP=0
+    FN=0
+
 
     with torch.no_grad():
         for x, y in loader:
@@ -143,14 +147,16 @@ def check_accuracy2(loader, model, device="cuda"):
             #print(acc, dice_score)
             accL.append(acc.item())
 
-            TP = ((preds == 1) & (y == 1)).sum().item()
-            FN = ((preds == 0) & (y == 1)).sum().item()
-            FP = ((preds == 1) & (y == 0)).sum().item()
+            TP += ((preds == 1) & (y == 1)).sum().item()
+            FN += ((preds == 0) & (y == 1)).sum().item()
+            FP += ((preds == 1) & (y == 0)).sum().item()
 
             recall = TP / (TP + FN)
             recallL.append(recall)
             precision = TP / (TP+FP)
             precisionL.append(precision)
+            precisionS+=precision
+            #print(recall)
             """
             preds = preds.view(-1).cpu().numpy()
             y = y.view(-1).cpu().numpy()
@@ -159,14 +165,14 @@ def check_accuracy2(loader, model, device="cuda"):
             f1 = f1_score(y, preds)
             f1_scoreS += f1
             """
-    mean_recall=np.mean(recall)*100
-    #print(f"Recall: {mean_recall:.6f}")
+    mean_recall=np.mean(recallL)*100
+    print(f"Recall: {mean_recall:.10f}")
     mean_precision=np.mean(precisionL)*100
-    #print(f"Precision: {mean_precision:.6f}")
+    print(f"Precision: {(precisionS/len(loader))*100:.10f}")
     mean_accuracy=np.mean(accL)
-    #print(f"Got {num_correct}/{num_pixels} with acc {mean_accuracy:.4f}")
+    print(f"Got {num_correct}/{num_pixels} with acc {mean_accuracy:.4f}")
     mean_dice_score=(dice_scoreS/len(loader))*100
-    #print(f"Dice score: {mean_dice_score}")
+    print(f"Dice score: {mean_dice_score}")
     # print(f"F1 score: {f1_scoreS / len(loader)}")
     #model.train()
     return mean_accuracy, mean_dice_score.item(), mean_recall, mean_precision, accL, dice_scoreL
@@ -183,7 +189,7 @@ def save_predictions_as_imgs(
         torchvision.utils.save_image(
             preds, f"{folder}/pred_{idx}.png"
         )
-        #torchvision.utils.save_image(y.unsqueeze(1), f"{folder}{idx}.png")
-        torchvision.utils.save_image(x, f"{folder}{idx}.png")
+        torchvision.utils.save_image(y.unsqueeze(1), f"{folder}{idx}.png")
+        #torchvision.utils.save_image(x, f"{folder}{idx}.png")
 
     model.train()

@@ -1,3 +1,4 @@
+#evaluation of classical algorithms accuracy
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 from skimage.filters import threshold_otsu
@@ -13,120 +14,6 @@ TEST_MASK_DIR = "data/test_masks/"
 IMAGE_HEIGHT = 160*scale  # 1280 originally
 IMAGE_WIDTH = 240*scale  # 1918 originally
 n_clusters=2
-
-def segment(img):
-    b, g, r = cv2.split(img)
-    rgb_img = cv2.merge([r, g, b])
-
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-    kernel = np.ones((2, 2), np.uint8)
-
-    closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
-
-    sure_bg = cv2.dilate(closing, kernel, iterations=5)
-
-    dist_transform = cv2.distanceTransform(sure_bg, cv2.DIST_L2, 3)
-
-    ret, sure_fg = cv2.threshold(dist_transform, 0.1 * dist_transform.max(), 255, 0)
-
-    return sure_fg
-
-def rgb_threshold(img):
-    b, g, r = cv2.split(img)
-
-    rgb_img = cv2.merge([r, g, b])
-
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    '''
-    fig, axs = plt.subplots(1, 4, figsize=(10, 5))
-    # Plot each image in a separate subplot
-    axs[0].imshow(b, cmap="gray")
-    axs[1].imshow(g, cmap="gray")
-    axs[2].imshow(r, cmap="gray")
-    axs[3].imshow(gray, cmap="gray")
-
-    # Set the titles for each subplot
-    axs[0].set_title('Blue')
-    axs[1].set_title('Green')
-    axs[2].set_title('Red')
-    axs[3].set_title('Gray')
-
-    plt.show()
-    '''
-    retr, threshr = cv2.threshold(r, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    retg, threshg = cv2.threshold(g, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    retb, threshb = cv2.threshold(b, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-    ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-    kernel = np.ones((2, 2), np.uint8)
-
-    closingr = cv2.morphologyEx(threshr, cv2.MORPH_CLOSE, kernel, iterations=2)
-    closingg = cv2.morphologyEx(threshg, cv2.MORPH_CLOSE, kernel, iterations=2)
-    closingb = cv2.morphologyEx(threshb, cv2.MORPH_CLOSE, kernel, iterations=2)
-
-    closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
-
-    sure_bgr = cv2.dilate(closingr, kernel, iterations=5)
-    sure_bgg = cv2.dilate(closingg, kernel, iterations=5)
-    sure_bgb = cv2.dilate(closingb, kernel, iterations=5)
-
-    sure_bg = cv2.dilate(closing, kernel, iterations=5)
-
-    dist_transformr = cv2.distanceTransform(sure_bgr, cv2.DIST_L2, 3)
-    dist_transformg = cv2.distanceTransform(sure_bgg, cv2.DIST_L2, 3)
-    dist_transformb = cv2.distanceTransform(sure_bgb, cv2.DIST_L2, 3)
-
-    dist_transform = cv2.distanceTransform(sure_bg, cv2.DIST_L2, 3)
-
-    ret, sure_fgr = cv2.threshold(dist_transformr, 0.1 * dist_transform.max(), 255, 0)
-    ret, sure_fgg = cv2.threshold(dist_transformg, 0.1 * dist_transform.max(), 255, 0)
-    ret, sure_fgb = cv2.threshold(dist_transformb, 0.1 * dist_transform.max(), 255, 0)
-
-    ret, sure_fg = cv2.threshold(dist_transform, 0.1 * dist_transform.max(), 255, 0)
-
-    fig, axs = plt.subplots(1, 5, figsize=(10, 5))
-    # Plot each image in a separate subplot
-    axs[0].imshow(sure_fgb, cmap="gray")
-    axs[1].imshow(sure_fgg, cmap="gray")
-    axs[2].imshow(sure_fgr, cmap="gray")
-    axs[3].imshow(sure_fg, cmap="gray")
-    axs[4].imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-
-    # Set the titles for each subplot
-    axs[0].set_title('Blue')
-    axs[1].set_title('Green')
-    axs[2].set_title('Red')
-    axs[3].set_title('Gray')
-    axs[4].set_title('Color')
-
-    plt.show()
-    sure_fgr = sure_fgr / 255
-    sure_fgr = sure_fgr.astype(int)
-    sure_fgg = sure_fgg / 255
-    sure_fgg = sure_fgg.astype(int)
-    sure_fgb = sure_fgb / 255
-    sure_fgb = sure_fgb.astype(int)
-    seg_img=sure_fgr|sure_fgg|sure_fgb
-    return seg_img
-
-def kmeans_segmentation2(img):
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    #plt.imshow(img)
-    twoDimage = img.reshape((-1, 3))
-    twoDimage = np.float32(twoDimage)
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-    K = 2
-    attempts = 10
-    ret, label, center = cv2.kmeans(twoDimage, K, None, criteria, attempts, cv2.KMEANS_PP_CENTERS)
-    center = np.uint8(center)
-    res = center[label.flatten()]
-    result_image = res.reshape((img.shape))
-    return result_image
 
 def kmeans_segmentation(img):
     # Reshape the image into a vector of pixels
@@ -150,33 +37,25 @@ def kmeans_segmentation(img):
 
     return background_mask
 
-def tresh_seg(img):
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img = cv2.resize(img, (256, 256))
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    _, thresh = cv2.threshold(gray, np.mean(gray), 255, cv2.THRESH_BINARY_INV)
-    edges = cv2.dilate(cv2.Canny(thresh, 0, 255), None)
-    cnt = sorted(cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[-2], key=cv2.contourArea)[-1]
-    mask = np.zeros((256, 256), np.uint8)
-    masked = cv2.drawContours(mask, [cnt], -1, 255, -1)
-    return masked
+def segment(img):
+    b, g, r = cv2.split(img)
+    rgb_img = cv2.merge([r, g, b])
 
-def otsu(img):
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    thresh = threshold_otsu(img_gray)
-    img_otsu = img_gray < thresh
+    ret, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    def filter_image(image, mask):
-        r = image[:, :, 0] * mask
-        g = image[:, :, 1] * mask
-        b = image[:, :, 2] * mask
+    kernel = np.ones((2, 2), np.uint8)
 
-        return np.dstack([r, g, b])
+    closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
 
-    filtered = filter_image(img, img_otsu)
-    return filtered
+    sure_bg = cv2.dilate(closing, kernel, iterations=5)
+
+    dist_transform = cv2.distanceTransform(sure_bg, cv2.DIST_L2, 3)
+
+    ret, sure_fg = cv2.threshold(dist_transform, 0.1 * dist_transform.max(), 255, 0)
+
+    return sure_fg
 
 def color_mask(img):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -223,37 +102,34 @@ def main():
         img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
         gt = cv2.resize(gt, dim, interpolation=cv2.INTER_AREA)
 
-        background_mask = kmeans_segmentation(img)
-        #plt.imshow(background_mask)
-        #plt.show()
-        #background_mask = background_mask / 255
-        #background_mask = background_mask.astype(int)
-        #plt.imshow(background_mask)
-        #plt.show()
-        print(np.unique(background_mask))
+        #Treshold segmentation
+        background_mask = segment(img)
+        background_mask = background_mask / 255
+        background_mask = background_mask.astype(int)
+
+        #K-means segmentation
+        #background_mask = kmeans_segmentation(img)
+
         TP += ((background_mask == 1) & (gt == 1)).sum().item()
         FN += ((background_mask == 0) & (gt == 1)).sum().item()
         FP += ((background_mask == 1) & (gt == 0)).sum().item()
-        #print(TP,FP)
+
         recall = TP / (TP + FN)
         recallL.append(recall)
         precision = TP / (TP + FP)
         precisionL.append(precision)
         num_correct += np.sum(gt == background_mask)
         num_pixels += IMAGE_HEIGHT*IMAGE_WIDTH
-        #num_correctE = np.sum(gt == background_mask)
+
 
         dice_score = (2 * np.sum(gt * background_mask)) / (np.sum(gt + background_mask) + 1e-8)
         dice_scoreL.append(dice_score)
         accT=num_correct / num_pixels * 100
         accTL.append(accT)
-        #print("Image: ", i)
 
-        #accE=num_correctE / num_pixelsE * 100
-        #accEL.append(accE)
-        #print(f"Got acc {accE:.2f} for image with {num_correctE}/{num_pixelsE} correct")
-        #print(f"Dice score: {dice_score}")
-        if accT<30:
+
+        #showing the results of segmentation with accuracy more than 75%
+        if accT<75:
             fig, axs = plt.subplots(1, 3, figsize=(10, 5))
             # Plot each image in a separate subplot
             axs[0].imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
@@ -272,10 +148,6 @@ def main():
     print(f"Recall: {np.mean(recallL):.6f}")
     print(f"Precision: {np.mean(precisionL):.6f}")
 
-    #meanAcc=statistics.mean(accEL)
-    #print(meanAcc)
-    #meanDSc = statistics.mean(dice_scoreL)
-    #print(meanDSc)
     plt.plot(accTL, label='Total accuracy')
     plt.xlabel('Image')
     plt.ylabel('Accuracy %')

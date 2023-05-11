@@ -1,3 +1,4 @@
+#evaluation of neural network segmentation models accuracy
 import torch
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
@@ -19,14 +20,12 @@ from utils import (
     save_predictions_as_imgs,
 )
 
-# Hyperparameters etc.
 LEARNING_RATE = 1e-4
-#LEARNING_RATE = 0.005
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 BATCH_SIZE = 16
-NUM_EPOCHS = 1
+NUM_EPOCHS = 5
 NUM_WORKERS = 2
-scale=1 #1 or 4
+scale=1 #1 or 2
 IMAGE_HEIGHT = 160*scale  # 1280 originally
 IMAGE_WIDTH = 240*scale   # 1918 originally
 PIN_MEMORY = True

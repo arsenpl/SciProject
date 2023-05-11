@@ -1,3 +1,4 @@
+#dataset preparation
 import os
 from PIL import Image
 from torch.utils.data import Dataset
@@ -16,12 +17,8 @@ class CarvanaDataset(Dataset):
 
     def __getitem__(self, index):
         img_path = os.path.join(self.image_dir, self.images[index])
-        #print("IMG",img_path)
-        #mask_path = os.path.join(self.mask_dir, self.images[index].replace("_leftImg8bit.png", "_gtFine_color.png"))
         mask_path = os.path.join(self.mask_dir, self.images[index].replace(".jpg",".png"))
-        #print("MASK",mask_path)
         image = np.array(Image.open(img_path).convert("RGB"))
-        #mask = np.array(Image.open(mask_path).convert("RGB"))
         mask = np.array(Image.open(mask_path).convert("L"), dtype=np.float32)
         mask[mask == 255.0] = 1.0
 

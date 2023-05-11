@@ -1,3 +1,4 @@
+#unilities
 import numpy as np
 import torch
 import torchvision
@@ -91,24 +92,14 @@ def check_accuracy(loader, loss_fn,  model, device="cuda"):
             preds = (preds > 0.5).float()
             num_correct += (preds == y).sum()
             num_pixels += torch.numel(preds)
-            #print(str(num_pixels)+" "+str(num_correct))
             dice_score += (2 * (preds * y).sum()) / (
                 (preds + y).sum() + 1e-8
             )
-            """
-            preds = preds.view(-1).cpu().numpy()
-            y = y.view(-1).cpu().numpy()
-            
-            # Calculate the F1 score
-            f1 = f1_score(y, preds)
-            f1_scoreS += f1
-            """
     acc=num_correct/num_pixels*100
     print(
         f"Got {num_correct}/{num_pixels} with acc {acc:.2f}"
     )
     print(f"Dice score: {dice_score/len(loader)}")
-    #print(f"F1 score: {f1_scoreS / len(loader)}")
     print(i)
     model.train()
     return acc, lossL
@@ -157,14 +148,7 @@ def check_accuracy2(loader, model, device="cuda"):
             precisionL.append(precision)
             precisionS+=precision
             #print(recall)
-            """
-            preds = preds.view(-1).cpu().numpy()
-            y = y.view(-1).cpu().numpy()
 
-            # Calculate the F1 score
-            f1 = f1_score(y, preds)
-            f1_scoreS += f1
-            """
     mean_recall=np.mean(recallL)*100
     print(f"Recall: {mean_recall:.10f}")
     mean_precision=np.mean(precisionL)*100

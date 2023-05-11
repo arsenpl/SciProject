@@ -1,3 +1,4 @@
+#UNet model definition
 import torch
 import torch.nn as nn
 import torchvision.transforms.functional as TF
@@ -27,12 +28,10 @@ class UNET(nn.Module):
         self.downs = nn.ModuleList()
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
-        # Down part of UNET
         for feature in features:
             self.downs.append(DoubleConv(in_channels, feature))
             in_channels = feature
 
-        # Up part of UNET
         for feature in reversed(features):
             self.ups.append(
                 nn.ConvTranspose2d(
@@ -72,7 +71,7 @@ class UNET(nn.Module):
 def test():
     x = torch.randn((3, 1, 161, 161))
     model = UNET(in_channels=1, out_channels=1)
-
+    print(model)
     preds = model(x)
     print(x.shape)
     print(preds.shape)

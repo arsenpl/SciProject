@@ -1,8 +1,8 @@
+#FCN model definition
 import torch
 import torch.nn as nn
 import torchvision.transforms.functional as TF
 from torchsummary import summary
-
 
 # VGG Cell
 class DoubleConv(nn.Module):

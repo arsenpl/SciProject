@@ -1,3 +1,4 @@
+#training process
 import torch
 import albumentations as A
 import matplotlib.pyplot as plt
@@ -17,16 +18,12 @@ from utils import (
     save_predictions_as_imgs,
 )
 
-# Hyperparameters
-#Learning rate for UNET and FCN-8
 LEARNING_RATE = 1e-4
-#Learning rate for SEGNET
-#LEARNING_RATE = 0.005
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 BATCH_SIZE = 2
-NUM_EPOCHS = 5
+NUM_EPOCHS = 10
 NUM_WORKERS = 2
-scale=2 #1 or 2
+scale=1 #1 or 2
 IMAGE_HEIGHT = 160*scale  # 1280 originally
 IMAGE_WIDTH = 240*scale   # 1918 originally
 PIN_MEMORY = True
@@ -39,7 +36,7 @@ VAL_MASK_DIR = "data/val_masks/"
 TEST_IMG_DIR = "data/test_images/"
 TEST_MASK_DIR = "data/test_masks/"
 #Model architectures: UNET, FCN, SEGNET
-MODEL_ARCH="UNETR"
+MODEL_ARCH="SEGNET"
 
 def train_fn(train_loader, val_loader, model, optimizer, loss_fn, scaler):
     loop = tqdm(train_loader)

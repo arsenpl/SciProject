@@ -21,7 +21,7 @@ from utils import (
 LEARNING_RATE = 1e-4
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 BATCH_SIZE = 2
-NUM_EPOCHS = 10
+NUM_EPOCHS = 5
 NUM_WORKERS = 2
 scale=1 #1 or 2
 IMAGE_HEIGHT = 160*scale  # 1280 originally
@@ -36,7 +36,7 @@ VAL_MASK_DIR = "data/val_masks/"
 TEST_IMG_DIR = "data/test_images/"
 TEST_MASK_DIR = "data/test_masks/"
 #Model architectures: UNET, FCN, SEGNET
-MODEL_ARCH="SEGNET"
+MODEL_ARCH="SEGNETproba"
 
 def train_fn(train_loader, val_loader, model, optimizer, loss_fn, scaler):
     loop = tqdm(train_loader)
@@ -150,6 +150,7 @@ def main():
     elif MODEL_ARCH.__contains__("SEGNET"):
         model = SegNet(in_channels=3, out_channels=1, BN_momentum=0.9).to(DEVICE)
         loss_fn = nn.BCEWithLogitsLoss()
+        #optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
         optimizer = optim.SGD(model.parameters(), lr=0.005, momentum=0.5)
 
     train_loader, val_loader, test_loader = get_loaders(

@@ -125,26 +125,32 @@ def check_accuracy2(loader, model, device="cuda"):
             x = x.to(device)
             y = y.to(device).unsqueeze(1)
             # print(x.shape," ",y.shape)
+
+            # Wykonanie segmentacji
             preds = torch.sigmoid(model(x))
             preds = (preds > 0.5).float()
+
+            # Wyznaczenie wskaźnika Dice
+            dice_score = (2 * (preds * y).sum()) / ((preds + y).sum() + 1e-8)
+
+            # Wyznaczenie dokładności
             num_correct += (preds == y).sum()
             num_pixels += torch.numel(preds)
-            dice_score = (2 * (preds * y).sum()) / (
-                    (preds + y).sum() + 1e-8
-            )
-            dice_scoreS+=dice_score
-            dice_scoreL.append(dice_score.item())
             acc = num_correct / num_pixels * 100
-            #print(acc, dice_score)
-            accL.append(acc.item())
 
+            # Wyznaczenie prawdziwie pozytywnej liczby i precyzji
             TP += ((preds == 1) & (y == 1)).sum().item()
             FN += ((preds == 0) & (y == 1)).sum().item()
             FP += ((preds == 1) & (y == 0)).sum().item()
 
             recall = TP / (TP + FN)
-            recallL.append(recall)
             precision = TP / (TP+FP)
+
+            dice_scoreS += dice_score
+            dice_scoreL.append(dice_score.item())
+            # print(acc, dice_score)
+            accL.append(acc.item())
+            recallL.append(recall)
             precisionL.append(precision)
             precisionS+=precision
             #print(recall)

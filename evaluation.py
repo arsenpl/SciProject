@@ -31,7 +31,7 @@ IMAGE_WIDTH = 240*scale   # 1918 originally
 PIN_MEMORY = True
 LOAD_MODEL = False
 #Model architectures: UNET, FCN, SEGNET
-MODEL_ARCHS=["UNET"]
+MODEL_ARCHS=["UNETproba"]
 
 TRAIN_IMG_DIR = "data/train_images/"
 TRAIN_MASK_DIR = "data/train_masks/"
@@ -103,7 +103,8 @@ def main():
         elif MODEL_ARCH.__contains__("SEGNET"):
             model = SegNet(in_channels=3, out_channels=1, BN_momentum=0.9).to(DEVICE)
 
-        model.load_state_dict(torch.load("models/model"+MODEL_ARCH+".pt"))
+        #model.load_state_dict(torch.load("models/modelUNET.pt"))
+        model.load_state_dict(torch.load("models/model" + MODEL_ARCH + ".pt"))
         model.eval()
         save_predictions_as_imgs(
             val_loader, model, folder="saved_images/", device=DEVICE

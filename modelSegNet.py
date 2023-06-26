@@ -7,14 +7,14 @@ import torch.nn.functional as F
 
 # VGG Cell
 class DoubleConv(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, BN_momentum):
         super(DoubleConv, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
+            nn.BatchNorm2d(out_channels, momentum=BN_momentum),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
+            nn.BatchNorm2d(out_channels, momentum=BN_momentum),
             nn.ReLU(inplace=True),
         )
 
@@ -22,17 +22,17 @@ class DoubleConv(nn.Module):
         return self.conv(x)
 
 class TrippleConv(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, BN_momentum):
         super(TrippleConv, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
+            nn.BatchNorm2d(out_channels, momentum=BN_momentum),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
+            nn.BatchNorm2d(out_channels, momentum=BN_momentum),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
+            nn.BatchNorm2d(out_channels, momentum=BN_momentum),
             nn.ReLU(inplace=True),
         )
 
@@ -44,75 +44,73 @@ class SegNet(nn.Module):
 
     def __init__(self, in_channels=3, out_channels=32, BN_momentum=0.5):
         super(SegNet, self).__init__()
-        """
+
         self.in_channels=in_channels
         self.out_channels=out_channels
 
         self.enpool = nn.MaxPool2d(kernel_size=2, stride=2, return_indices=True)
 
-        self.econv1 = DoubleConv(in_channels, 64)
-        self.econv2 = DoubleConv(64, 128)
-        self.econv3 = TrippleConv(128, 256)
-        self.econv4 = TrippleConv(256, 512)
-        self.econv5 = TrippleConv(512, 512)
+        self.econv1 = DoubleConv(in_channels, 64, BN_momentum)
+        self.econv2 = DoubleConv(64, 128, BN_momentum)
+        self.econv3 = TrippleConv(128, 256, BN_momentum)
+        self.econv4 = TrippleConv(256, 512, BN_momentum)
+        self.econv5 = TrippleConv(512, 512, BN_momentum)
 
         self.dpool = nn.MaxUnpool2d(2, stride=2)
 
-        self.dconv1 = TrippleConv(512, 512)
-        self.dconv2 = TrippleConv(512, 256)
-        self.dconv3 = TrippleConv(256, 128)
-        self.dconv4 = DoubleConv(128, 64)
-        self.dconv5 = DoubleConv(64, out_channels)
+        self.dconv1 = TrippleConv(512, 512, BN_momentum)
+        self.dconv2 = TrippleConv(512, 256, BN_momentum)
+        self.dconv3 = TrippleConv(256, 128, BN_momentum)
+        self.dconv4 = DoubleConv(128, 64, BN_momentum)
+        self.dconv5 = DoubleConv(64, out_channels, BN_momentum)
 
         self.dense = nn.Linear(out_channels,out_channels)
         self.soft = nn.Softmax(dim=1)
 
     def forward(self, x):
-
+        #print("input", x.shape)
         x1 = self.econv1(x)
-        #print("1", x1.shape)
         mp1,i1 = self.enpool(x1)
-        #print("2", x1.shape)
         sz1 = mp1.size()
+        #print("conv1 mp1", mp1.shape)
         x2 = self.econv2(mp1)
         mp2, i2 = self.enpool(x2)
-        #print("3", x2.shape)
         sz2 = mp2.size()
+        #print("conv2 mp2", mp2.shape)
         x3 = self.econv3(mp2)
         mp3, i3 = self.enpool(x3)
-        #print("4", x3.shape)
         sz3 = mp3.size()
+        #print("conv3 mp3", mp3.shape)
         x4 = self.econv4(mp3)
         mp4, i4 = self.enpool(x4)
-        #print("5", x4.shape)
         sz4 = mp4.size()
+        #print("conv4 mp4", mp4.shape)
         x5 = self.econv5(mp4)
         mp5, i5 = self.enpool(x5)
-        #print("6", x5.shape)
         sz5 = mp5.size()
+        #print("conv5 mp5", mp5.shape)
         #print(sz5)
         dp1 = self.dpool(mp5, i5, output_size=sz4)
         x6 =self.dconv1(dp1)
-        #print("7", x6.shape)
+        #print("deconv1 up1", x6.shape)
         dp2 = self.dpool(x6, i4, output_size=sz3)
         x7 = self.dconv2(dp2)
-        #print("8", x7.shape)
+        #print("deconv2 up2", x7.shape)
         dp3 = self.dpool(x7, i3, output_size=sz2)
         x8 = self.dconv3(dp3)
-        #print("9", x8.shape)
+        #print("deconv3 up3", x8.shape)
         dp4 = self.dpool(x8, i2, output_size=sz1)
         x9 = self.dconv4(dp4)
-        #print("10", x9.shape)
-        #dp5 = self.dpool(x9, i1, output_size=sz1)
-        x10 = self.dconv5(x9)
-        #print("11", x10.shape)
+        #print("deconv4 up4", x9.shape)
+        dp5 = self.dpool(x9, i1)
+        out = self.dconv5(dp5)
+        #print("deconv5 up5", x10.shape)
         #dl = self.dense(x10)
-        out = self.soft(x10)
-        out = TF.resize(out, x.shape[2:])
-        #print("12", out.shape)
+        #out = self.soft(out)
+        #print("out", out.shape)
         return out
-
-        """
+        '''
+        ################################################
         self.in_chn = in_channels
         self.out_chn = out_channels
 
@@ -255,16 +253,17 @@ class SegNet(nn.Module):
         #x = F.softmax(x, dim=1)
 
         return x
-
+        ##################################################
+        '''
 def test():
     x = torch.randn((3, 1, 32, 32))
-    print("BEFORE:",x[1:])
+    #print("BEFORE:",x[1:])
     model = SegNet(in_channels=1,out_channels=1)
 
     preds = model(x)
-    print("AFTER:",preds[1:])
-    print(x.shape)
-    print(preds.shape)
+    #print("AFTER:",preds[1:])
+    #print(x.shape)
+    #print(preds.shape)
     assert preds.shape == x.shape
 
 if __name__ == "__main__":

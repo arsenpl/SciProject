@@ -12,7 +12,6 @@ import cv2
 import csv
 
 
-
 TEST_IMG_DIR = "data/test_images/"
 TEST_MASK_DIR = "data/test_masks/"
 TRAIN_IMG_DIR = "data/train_images/"
